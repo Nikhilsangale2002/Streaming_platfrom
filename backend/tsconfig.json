@@ -4,6 +4,13 @@
     "lib": ["ES2022"],
     "module": "commonjs",
     "moduleResolution": "node",
+    // TS 5.5+ renamed "node" to "node10" and flags it for removal in TS 7.0.
+    // Not migrating to "node16"/"bundler" here: either changes real resolution
+    // semantics (package.json "exports" handling, extension requirements),
+    // and this project is at the end of its build with everything green — not
+    // the moment to risk a behavior change for a lint-level warning. This is
+    // TypeScript's own documented interim acknowledgment, not a functional fix.
+    "ignoreDeprecations": "5.0",
     "rootDir": ".",
     "outDir": "dist",
     "strict": true,
