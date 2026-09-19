@@ -6,6 +6,7 @@ import { errorHandler } from "./middleware/errorHandler.middleware";
 import { notFound } from "./middleware/notFound.middleware";
 import { requestId } from "./middleware/requestId.middleware";
 import { authRouter, usersRouter } from "./modules/auth/auth.routes";
+import { roomRouter } from "./modules/rooms/room.routes";
 
 export function createApp(): Express {
   const app = express();
@@ -29,6 +30,7 @@ export function createApp(): Express {
 
   app.use("/api/auth", authRouter);
   app.use("/api/users", usersRouter);
+  app.use("/api/rooms", roomRouter);
 
   app.use(notFound);
   app.use(errorHandler);
