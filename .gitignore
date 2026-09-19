@@ -34,3 +34,11 @@ Thumbs.db
 
 # SDD workspace (git-ignored scratch)
 /.superpowers
+
+# Removed from git history at the user's request (2026-09-19) — ignored so
+# they can't be accidentally re-tracked. Kept locally, not in the repo.
+/CLAUDE.md
+/plan.md
+/docker-compose.dev.yml
+/backend/.env.example
+/docs
