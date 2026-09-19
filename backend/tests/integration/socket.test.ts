@@ -86,6 +86,70 @@ describe("Socket.IO realtime layer", () => {
     hostClient.close();
   });
 
+  it("allows an existing member to re-join a room that is now at capacity", async () => {
+    const host = await makeUserAndToken("cap-host@example.com");
+    const other = await makeUserAndToken("cap-other@example.com");
+    const room = await RoomModel.create({ name: "Capacity Room", host: host.userId, maxParticipants: 2 });
+
+    const hostClient = connectClient(port, host.token);
+    await new Promise<void>((resolve) => hostClient.once("connect", resolve));
+    const hostAck = await new Promise<{ ok: boolean }>((resolve) => {
+      hostClient.emit("room:join", { roomId: room._id.toString() }, resolve);
+    });
+    expect(hostAck.ok).toBe(true);
+
+    const otherClient = connectClient(port, other.token);
+    await new Promise<void>((resolve) => otherClient.once("connect", resolve));
+    const otherAck = await new Promise<{ ok: boolean }>((resolve) => {
+      otherClient.emit("room:join", { roomId: room._id.toString() }, resolve);
+    });
+    expect(otherAck.ok).toBe(true); // room is now at capacity: 2/2
+
+    // Re-emitting room:join for an EXISTING member must still succeed even
+    // though the room is now full -- capacity only blocks genuinely new
+    // members. Before the fix, assertRoomJoinable hardcoded alreadyMember to
+    // false and wrongly rejected this with ROOM_FULL.
+    const rejoinAck = await new Promise<{ ok: boolean }>((resolve) => {
+      hostClient.emit("room:join", { roomId: room._id.toString() }, resolve);
+    });
+    expect(rejoinAck.ok).toBe(true);
+
+    hostClient.close();
+    otherClient.close();
+  });
+
+  it("rejects room:message from a socket that has not joined the room", async () => {
+    const member = await makeUserAndToken("msg-member@example.com");
+    const outsider = await makeUserAndToken("msg-outsider@example.com");
+    const room = await RoomModel.create({ name: "Message Room", host: member.userId });
+
+    const memberClient = connectClient(port, member.token);
+    await new Promise<void>((resolve) => memberClient.once("connect", resolve));
+    await new Promise<{ ok: boolean }>((resolve) => {
+      memberClient.emit("room:join", { roomId: room._id.toString() }, resolve);
+    });
+
+    const outsiderClient = connectClient(port, outsider.token);
+    await new Promise<void>((resolve) => outsiderClient.once("connect", resolve));
+
+    let memberReceived = false;
+    memberClient.once("room:message", () => {
+      memberReceived = true;
+    });
+
+    // Attach the error listener before emitting, per the same
+    // listener-before-trigger discipline as the rest of this file.
+    const errorPromise = once(outsiderClient, "error");
+    outsiderClient.emit("room:message", { roomId: room._id.toString(), text: "should not broadcast" });
+    const errorEvent = await errorPromise;
+
+    expect(errorEvent.code).toBe("NOT_A_MEMBER");
+    expect(memberReceived).toBe(false);
+
+    memberClient.close();
+    outsiderClient.close();
+  });
+
   it("multi-tab: two sockets for one user, one disconnects, user stays online", async () => {
     const { userId, token } = await makeUserAndToken("multitab@example.com");
     const observer = await makeUserAndToken("observer@example.com");

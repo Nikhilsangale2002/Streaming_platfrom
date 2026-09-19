@@ -1,3 +1,5 @@
+import { redis } from "../db/redis";
+import { redisKeys } from "../config/constants";
 import { RoomModel, ROOM_STATUS } from "../models/room.model";
 import { getParticipantCount } from "../modules/rooms/room.state.service";
 
@@ -19,10 +21,11 @@ export async function assertRoomJoinable(roomId: string, userId: string): Promis
   }
 
   const count = await getParticipantCount(roomId);
-  const alreadyMember = false; // join() itself is idempotent; capacity check only blocks NEW members
-  void userId;
-  void alreadyMember;
-  if (count >= room.maxParticipants) {
+  // join() itself is idempotent, so an existing member re-emitting room:join
+  // must never be rejected just because the room happens to be at capacity --
+  // the capacity check only blocks genuinely NEW members.
+  const alreadyMember = await redis.sismember(redisKeys.roomParticipants(roomId), userId);
+  if (count >= room.maxParticipants && !alreadyMember) {
     return { ok: false, code: "ROOM_FULL", message: "This room is at capacity" };
   }
 

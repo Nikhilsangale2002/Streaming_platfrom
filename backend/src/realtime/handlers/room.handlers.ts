@@ -1,9 +1,10 @@
 import type { Server, Socket } from "socket.io";
 import { z } from "zod";
+import { redis } from "../../db/redis";
 import { UserModel } from "../../models/user.model";
 import { join, leave } from "../../modules/rooms/room.state.service";
 import { assertRoomJoinable } from "../socket.guards";
-import { socketRooms } from "../../config/constants";
+import { socketRooms, redisKeys } from "../../config/constants";
 import { logger } from "../../utils/logger";
 import type { ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData } from "../events";
 
@@ -98,22 +99,32 @@ export function registerRoomHandlers(io: AppServer, socket: AppSocket): void {
   });
 
   socket.on("room:message", (payload) => {
-    try {
-      const parsed = roomMessagePayloadSchema.safeParse(payload);
-      if (!parsed.success) return;
-      const { roomId, text } = parsed.data;
+    void (async () => {
+      try {
+        const parsed = roomMessagePayloadSchema.safeParse(payload);
+        if (!parsed.success) return;
+        const { roomId, text } = parsed.data;
 
-      // Scoped to the room only -- proves events reach relevant sockets and
-      // no others (see tests/integration/socket.isolation.test.ts).
-      io.to(socketRooms.room(roomId)).emit("room:message", {
-        roomId,
-        userId: socket.data.userId,
-        text,
-        sentAt: new Date().toISOString(),
-      });
-    } catch (error: unknown) {
-      logger.error({ err: error, userId: socket.data.userId }, "room:message failed");
-    }
+        // Authorization ("may you do this"), not authentication -- only an
+        // actual member of the room may broadcast into it.
+        const isMember = await redis.sismember(redisKeys.roomParticipants(roomId), socket.data.userId);
+        if (!isMember) {
+          socket.emit("error", { code: "NOT_A_MEMBER", message: "You must join this room before sending messages" });
+          return;
+        }
+
+        // Scoped to the room only -- proves events reach relevant sockets and
+        // no others (see tests/integration/socket.isolation.test.ts).
+        io.to(socketRooms.room(roomId)).emit("room:message", {
+          roomId,
+          userId: socket.data.userId,
+          text,
+          sentAt: new Date().toISOString(),
+        });
+      } catch (error: unknown) {
+        logger.error({ err: error, userId: socket.data.userId }, "room:message failed");
+      }
+    })();
   });
 
   socket.on("disconnect", () => {
