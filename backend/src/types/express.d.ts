@@ -13,6 +13,12 @@ declare global {
         params?: unknown;
         query?: unknown;
       };
+      /** Set by requireAuth once the JWT is verified and the user is loaded. */
+      user?: {
+        id: string;
+        name: string;
+        email: string;
+      };
     }
   }
 }

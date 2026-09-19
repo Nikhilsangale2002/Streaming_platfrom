@@ -5,6 +5,7 @@ import { env } from "./config/env";
 import { errorHandler } from "./middleware/errorHandler.middleware";
 import { notFound } from "./middleware/notFound.middleware";
 import { requestId } from "./middleware/requestId.middleware";
+import { authRouter, usersRouter } from "./modules/auth/auth.routes";
 
 export function createApp(): Express {
   const app = express();
@@ -26,7 +27,8 @@ export function createApp(): Express {
     res.status(200).json({ status: "ok", uptime: process.uptime() });
   });
 
-  // Feature routers mount here in the Backend Features plan.
+  app.use("/api/auth", authRouter);
+  app.use("/api/users", usersRouter);
 
   app.use(notFound);
   app.use(errorHandler);
