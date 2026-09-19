@@ -29,8 +29,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=5000
 
-COPY --from=proddeps /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
+COPY --chown=node:node --from=proddeps /app/node_modules ./node_modules
+COPY --chown=node:node --from=build /app/dist ./dist
 COPY package.json ./
 
 # The node image ships an unprivileged `node` user. Never run as root.

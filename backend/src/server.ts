@@ -17,18 +17,32 @@ async function start(): Promise<void> {
 
 let shuttingDown = false;
 
-async function shutdown(signal: string): Promise<void> {
+async function shutdown(signal: string, code = 0): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
   logger.info({ signal }, "shutting down");
 
-  // Stop accepting new connections, then release the stores.
-  await new Promise<void>((resolve) => server.close(() => { resolve(); }));
-  await disconnectMongo();
-  await disconnectRedis();
+  // If a stuck connection or a hung disconnect prevents clean shutdown,
+  // force exit rather than rely on Docker's SIGKILL at the 10s mark -- this
+  // way the failure is logged before the process dies.
+  const watchdog = setTimeout(() => {
+    logger.error("graceful shutdown timed out, forcing exit");
+    process.exit(1);
+  }, 10_000).unref();
 
-  logger.info("shutdown complete");
-  process.exit(0);
+  try {
+    await new Promise<void>((resolve) => server.close(() => { resolve(); }));
+    server.closeIdleConnections();
+    await disconnectMongo();
+    await disconnectRedis();
+    logger.info("shutdown complete");
+  } catch (error: unknown) {
+    logger.error({ err: error }, "error during shutdown");
+    code = 1;
+  } finally {
+    clearTimeout(watchdog);
+    process.exit(code);
+  }
 }
 
 // Docker sends SIGTERM; tini forwards it. Ctrl-C sends SIGINT.
@@ -40,7 +54,7 @@ for (const signal of ["SIGTERM", "SIGINT"] as const) {
 
 process.on("unhandledRejection", (reason) => {
   logger.fatal({ err: reason }, "unhandled rejection");
-  void shutdown("unhandledRejection");
+  void shutdown("unhandledRejection", 1);
 });
 
 start().catch((error: unknown) => {

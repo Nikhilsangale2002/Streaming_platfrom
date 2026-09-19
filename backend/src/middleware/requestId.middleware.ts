@@ -4,7 +4,7 @@ import { logger } from "../utils/logger";
 
 export function requestId(req: Request, res: Response, next: NextFunction): void {
   const incoming = req.header("x-request-id");
-  req.id = incoming && incoming.length > 0 ? incoming : randomUUID();
+  req.id = incoming && /^[\w-]{1,128}$/.test(incoming) ? incoming : randomUUID();
   req.log = logger.child({ requestId: req.id });
   res.setHeader("x-request-id", req.id);
   next();

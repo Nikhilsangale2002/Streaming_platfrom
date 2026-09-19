@@ -15,7 +15,7 @@ export function createApp(): Express {
   app.use(helmet());
   app.use(
     cors({
-      origin: env.corsOrigins as string[],
+      origin: [...env.corsOrigins],
       credentials: true,
     }),
   );

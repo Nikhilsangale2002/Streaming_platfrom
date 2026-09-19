@@ -1,7 +1,6 @@
 import type { Logger } from "pino";
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       /** Correlation id, echoed as the `x-request-id` response header. */

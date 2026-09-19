@@ -9,6 +9,7 @@ export const redisKeys = {
   userSockets: (userId: string) => `presence:user:${userId}:sockets`,
   roomParticipants: (roomId: string) => `room:${roomId}:participants`,
   webhookEvent: (eventId: string) => `livekit:webhook:${eventId}`,
+  rateLimit: (ip: string, route: string) => `rl:${ip}:${route}`,
 } as const;
 
 export const socketRooms = {

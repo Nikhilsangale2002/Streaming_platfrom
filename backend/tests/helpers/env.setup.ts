@@ -3,7 +3,7 @@ import { config } from "dotenv";
 
 // Local runs read backend/.env. In CI the variables are already exported and
 // dotenv does not overwrite existing values, so this is a no-op there.
-config({ path: path.resolve(__dirname, "../../.env") });
+config({ path: path.resolve(__dirname, "../../.env"), quiet: true });
 
 process.env.NODE_ENV = "test";
 

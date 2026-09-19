@@ -1,8 +1,10 @@
 // Loads backend/.env for `npm run dev` and `npm start`. Values already present
 // in process.env win, so Docker Compose and CI are unaffected. Under Jest the
 // test setup file has already run and this is a no-op.
-import "dotenv/config";
+import { config } from "dotenv";
 import { z } from "zod";
+
+config({ quiet: true });
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
