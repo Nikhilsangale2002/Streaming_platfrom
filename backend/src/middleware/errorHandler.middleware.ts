@@ -29,6 +29,24 @@ function normalise(error: unknown): AppError {
     return new AppError("DUPLICATE_RESOURCE", "That resource already exists", 409);
   }
 
+  if (
+    error instanceof SyntaxError &&
+    "status" in error &&
+    typeof error.status === "number" &&
+    error.status < 500
+  ) {
+    return new AppError("INVALID_JSON", "Request body is not valid JSON", 400);
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "type" in error &&
+    error.type === "entity.too.large"
+  ) {
+    return new AppError("PAYLOAD_TOO_LARGE", "Request body is too large", 413);
+  }
+
   return new AppError("INTERNAL_ERROR", "Something went wrong", 500);
 }
 
