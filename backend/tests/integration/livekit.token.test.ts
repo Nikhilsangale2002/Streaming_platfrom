@@ -1,3 +1,4 @@
+import jwt from "jsonwebtoken";
 import request from "supertest";
 import { createApp } from "../../src/app";
 import { withTestDatabases } from "../helpers/db";
@@ -72,6 +73,28 @@ describe("POST /api/livekit/token", () => {
 
     expect(response.status).toBe(403);
     expect(response.body.code).toBe("IDENTITY_MISMATCH");
+  });
+
+  it("ignores a spoofed role: 'host' in the body for a non-host caller", async () => {
+    const host = await registerAndLogin("lk-host3@example.com");
+    const guest = await registerAndLogin("lk-guest2@example.com");
+    const createResponse = await request(app)
+      .post("/api/rooms")
+      .set("Authorization", `Bearer ${host.token}`)
+      .send({ name: "LK Room 4" });
+    const roomId = createResponse.body.data.id as string;
+
+    const response = await request(app)
+      .post("/api/livekit/token")
+      .set("Authorization", `Bearer ${guest.token}`)
+      .send({ userId: guest.userId, roomName: roomId, role: "host" });
+
+    expect(response.status).toBe(200);
+
+    const decoded = jwt.decode(response.body.data.token as string) as {
+      video?: { roomAdmin?: boolean };
+    };
+    expect(decoded.video?.roomAdmin).not.toBe(true);
   });
 
   it("returns 404 for a room that does not exist", async () => {
