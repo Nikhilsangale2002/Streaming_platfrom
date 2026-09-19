@@ -16,9 +16,9 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters"),
   JWT_EXPIRES_IN: z.string().default("1h"),
 
-  LIVEKIT_API_KEY: z.string().optional(),
-  LIVEKIT_API_SECRET: z.string().optional(),
-  LIVEKIT_URL: z.string().optional(),
+  LIVEKIT_API_KEY: z.string().min(1, "LIVEKIT_API_KEY is required"),
+  LIVEKIT_API_SECRET: z.string().min(1, "LIVEKIT_API_SECRET is required"),
+  LIVEKIT_URL: z.string().url("LIVEKIT_URL must be a valid URL"),
 
   CORS_ORIGINS: z.string().default("http://localhost:3000"),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
