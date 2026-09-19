@@ -118,14 +118,19 @@ export function registerRoomHandlers(io: AppServer, socket: AppSocket): void {
 
   socket.on("disconnect", () => {
     void (async () => {
-      try {
-        const rooms = joinedRooms(socket);
-        for (const roomId of rooms) {
+      // Every room this socket had joined must be cleaned up, not just the
+      // last one -- and one room's failure must not skip the rest, so each
+      // iteration gets its own try/catch rather than wrapping the whole loop.
+      for (const roomId of joinedRooms(socket)) {
+        try {
           const outcome = await leave({ roomId, userId: socket.data.userId, reason: "disconnect" });
           broadcastLeaveOutcome(io, roomId, socket.data.userId, outcome);
+        } catch (error: unknown) {
+          logger.error(
+            { err: error, userId: socket.data.userId, socketId: socket.id, roomId },
+            "disconnect cleanup failed for room",
+          );
         }
-      } catch (error: unknown) {
-        logger.error({ err: error, userId: socket.data.userId, socketId: socket.id }, "disconnect cleanup failed");
       }
     })();
   });
