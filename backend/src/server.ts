@@ -3,9 +3,11 @@ import { createApp } from "./app";
 import { env } from "./config/env";
 import { connectMongo, disconnectMongo } from "./db/mongoose";
 import { disconnectRedis } from "./db/redis";
+import { attachSocketServer } from "./realtime/io";
 import { logger } from "./utils/logger";
 
 const server = http.createServer(createApp());
+attachSocketServer(server);
 
 async function start(): Promise<void> {
   await connectMongo();
