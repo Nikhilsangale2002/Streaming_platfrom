@@ -1,4 +1,4 @@
-import { AccessToken, type VideoGrant } from "livekit-server-sdk";
+import { AccessToken, WebhookReceiver, type VideoGrant, type WebhookEvent } from "livekit-server-sdk";
 import { env } from "../../config/env";
 
 export interface GenerateTokenParams {
@@ -47,4 +47,11 @@ export async function generateToken(params: GenerateTokenParams): Promise<LiveKi
   const token = await at.toJwt();
 
   return { token, serverUrl: env.LIVEKIT_URL, roomName };
+}
+
+const webhookReceiver = new WebhookReceiver(env.LIVEKIT_API_KEY, env.LIVEKIT_API_SECRET);
+
+/** Throws if the signature is invalid. `rawBody` must be the exact bytes LiveKit sent. */
+export function verifyWebhookEvent(rawBody: string, authHeader: string | undefined): Promise<WebhookEvent> {
+  return webhookReceiver.receive(rawBody, authHeader);
 }

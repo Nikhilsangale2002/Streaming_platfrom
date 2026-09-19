@@ -6,6 +6,7 @@ import { errorHandler } from "./middleware/errorHandler.middleware";
 import { notFound } from "./middleware/notFound.middleware";
 import { requestId } from "./middleware/requestId.middleware";
 import { authRouter, usersRouter } from "./modules/auth/auth.routes";
+import { receiveWebhook } from "./modules/livekit/livekit.controller";
 import { livekitRouter } from "./modules/livekit/livekit.routes";
 import { roomRouter } from "./modules/rooms/room.routes";
 
@@ -22,6 +23,16 @@ export function createApp(): Express {
       credentials: true,
     }),
   );
+  // Must be mounted before the global JSON parser, and directly on `app`
+  // rather than on livekitRouter (which is mounted after express.json() has
+  // already consumed the body): WebhookReceiver needs the exact raw bytes
+  // LiveKit signed to verify the signature.
+  app.post(
+    "/api/livekit/webhook",
+    express.text({ type: "application/json" }),
+    receiveWebhook,
+  );
+
   app.use(express.json({ limit: "100kb" }));
 
   // Outside the envelope on purpose — read by Docker and the load balancer.
