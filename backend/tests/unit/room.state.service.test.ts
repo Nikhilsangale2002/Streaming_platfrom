@@ -106,6 +106,23 @@ describe("room.state.service", () => {
       await expect(getParticipantIds(room._id.toString())).resolves.toEqual([host._id.toString()]);
     });
 
+    it("converges every remaining participant when the host leaving ends the room", async () => {
+      const { room, host } = await makeRoom();
+      await join({ roomId: room._id.toString(), userId: host._id.toString(), role: "host" });
+      const guest = await UserModel.create({ name: "Guest2", email: "g3@e.com", passwordHash: "h" });
+      await join({ roomId: room._id.toString(), userId: guest._id.toString(), role: "participant" });
+
+      const result = await leave({ roomId: room._id.toString(), userId: host._id.toString(), reason: "rest" });
+
+      expect(result.roomEnded).toBe(true);
+      await expect(getParticipantCount(room._id.toString())).resolves.toBe(0);
+
+      const guestSession = await ParticipantSessionModel.findOne({ roomId: room._id, userId: guest._id });
+      expect(guestSession?.active).toBe(false);
+      expect(guestSession?.leftAt).toBeInstanceOf(Date);
+      expect(guestSession?.durationSec).toBeGreaterThanOrEqual(0);
+    });
+
     it("simultaneous leave calls for the same user close exactly one ParticipantSession", async () => {
       const { room, host } = await makeRoom();
       await join({ roomId: room._id.toString(), userId: host._id.toString(), role: "host" });

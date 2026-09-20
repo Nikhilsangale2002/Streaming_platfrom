@@ -114,5 +114,34 @@ export async function leave(params: {
     roomEnded = result.modifiedCount === 1;
   }
 
+  // The host leaving ends the room, but everyone else in it is still sitting
+  // in the Redis set and holding an open ParticipantSession. Converge them
+  // now rather than waiting for each of them to independently disconnect --
+  // a REST-only participant never will.
+  if (roomEnded) {
+    const remainingUserIds = await redis.smembers(participantsKey);
+    if (remainingUserIds.length > 0) {
+      await redis.del(participantsKey);
+      const now = new Date();
+      const remainingSessions = await ParticipantSessionModel.find({
+        roomId,
+        userId: { $in: remainingUserIds },
+        active: true,
+      });
+      await Promise.all(
+        remainingSessions.map((remainingSession) => {
+          const durationSec = Math.max(
+            0,
+            Math.round((now.getTime() - remainingSession.joinedAt.getTime()) / 1000),
+          );
+          return ParticipantSessionModel.updateOne(
+            { _id: remainingSession._id },
+            { active: false, leftAt: now, durationSec },
+          );
+        }),
+      );
+    }
+  }
+
   return { left: true, participantCount, roomEnded };
 }
