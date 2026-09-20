@@ -170,6 +170,7 @@ All of these are validated at startup with Zod — if one's missing or malformed
 | `REDIS_URL` | **yes** | e.g. `redis://redis:6379` inside Docker, `redis://localhost:6379` for local dev |
 | `JWT_SECRET` | **yes** | Must be at least 32 characters. Generate one with:<br>`node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"` |
 | `JWT_EXPIRES_IN` | no (default `1h`) | How long an access token is valid |
+| `REFRESH_TOKEN_TTL_DAYS` | no (default `30`) | How long a refresh token is valid before it must be replaced by logging in again |
 | `LIVEKIT_API_KEY` | **yes** | From your LiveKit Cloud project (free tier works fine) |
 | `LIVEKIT_API_SECRET` | **yes** | Same place |
 | `LIVEKIT_URL` | **yes** | Your project's `wss://...livekit.cloud` URL |
@@ -204,11 +205,22 @@ A full **Postman collection** is included at `postman/Streaming-Platform.postman
 
 | Method | Path | Auth? | Body | Notes |
 |---|---|---|---|---|
-| POST | `/api/auth/register` | no | `{ name, email, password, profileImage? }` | `password` min 8 chars. Returns the new user + a token. |
-| POST | `/api/auth/login` | no | `{ email, password }` | Returns the user + a token. |
+| POST | `/api/auth/register` | no | `{ name, email, password, profileImage? }` | `password` min 8 chars. Returns the new user + an access token + a refresh token. |
+| POST | `/api/auth/login` | no | `{ email, password }` | Returns the user + an access token + a refresh token. |
+| POST | `/api/auth/refresh` | no | `{ refreshToken }` | Exchanges a valid refresh token for a new access token *and* a new refresh token (see below). |
+| POST | `/api/auth/logout` | no | `{ refreshToken }` | Revokes the refresh token. Idempotent — logging out twice, or with an unknown token, is still `200`. |
 | GET | `/api/users/me` | yes | — | Re-reads the user from MongoDB every call — a deleted/changed account takes effect immediately, not at token expiry. |
 
-Both auth routes are rate-limited (20 requests / 15 minutes, tracked in Redis so it's shared correctly across multiple backend instances, not just one).
+All four auth routes are rate-limited (20 requests / 15 minutes, tracked in Redis so it's shared correctly across multiple backend instances, not just one).
+
+**How the refresh token works — rotating, one-time-use tokens:**
+
+The access token from Section 5 still expires after 1 hour, same as before. What's new is a second, longer-lived token (`REFRESH_TOKEN_TTL_DAYS`, default 30 days) that lets a client get a new access token without asking the user to log in again.
+
+- It's a random 128-character string, not a JWT — only its SHA-256 hash is ever stored in MongoDB (`RefreshTokenModel`), the same principle as `passwordHash` for actual passwords. The raw value only ever exists on the client and in transit.
+- **Every use rotates it.** Calling `/api/auth/refresh` doesn't just hand back a new access token — it revokes the refresh token you sent and issues a brand new one in its place. The old one can never be used again.
+- **Reuse is treated as theft.** If a refresh token that's already been rotated away gets presented again (`REFRESH_TOKEN_REUSED`), that's a strong signal someone other than the legitimate user has a copy of it — so every other live refresh token for that account is revoked too, forcing a fresh login everywhere. This is the standard "rotating refresh token" pattern precisely because a stolen-but-unused token is otherwise undetectable.
+- Expired documents are removed automatically by a MongoDB TTL index — there's no cleanup job to run.
 
 ### Rooms
 
@@ -413,7 +425,7 @@ The short version: nothing here needs re-architecting to scale — the separatio
 
 Being upfront about what this does *not* do, and why some of these were deliberate:
 
-- **No refresh-token flow.** Access tokens expire after 1 hour and there's no silent-refresh mechanism — a user just has to log in again. Cut deliberately to keep the auth surface small for this assignment; a production version would add rotating refresh tokens.
+- **No token blacklist for access tokens.** Access tokens are still short-lived (1 hour) stateless JWTs, so one can't be revoked mid-flight the way a refresh token can — it simply expires on its own. Logging out only guarantees the *refresh* token is dead; an already-issued access token remains valid for the rest of its hour. Given the 1-hour window, this was judged an acceptable tradeoff rather than adding a Redis-backed access-token blacklist.
 - **No frontend UI included in the graded scope** beyond what's needed to demonstrate the API.
 - **Capacity enforcement has a narrow race window.** If many new users try to join a room at the exact moment it hits its participant cap, a small number more than the cap could theoretically get through before the count catches up. This doesn't affect the correctness guarantees the assignment actually asks about (no double-counting, no lost leaves) — it's a soft ceiling under an unusual load pattern, not a data-integrity bug.
 - **Presence uses Socket.IO's own dead-connection detection** (ping/pong) rather than an additional Redis expiry layer — this was a deliberate simplification found and fixed during review: an extra expiry timer on top of Socket.IO's own keepalive was actually causing users to incorrectly show as offline while still connected.
