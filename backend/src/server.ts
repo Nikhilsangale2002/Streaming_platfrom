@@ -7,7 +7,7 @@ import { attachSocketServer } from "./realtime/io";
 import { logger } from "./utils/logger";
 
 const server = http.createServer(createApp());
-attachSocketServer(server);
+const io = attachSocketServer(server);
 
 async function start(): Promise<void> {
   await connectMongo();
@@ -33,8 +33,22 @@ async function shutdown(signal: string, code = 0): Promise<void> {
   }, 10_000).unref();
 
   try {
-    await new Promise<void>((resolve) => server.close(() => { resolve(); }));
+    // A live WebSocket connection keeps the underlying http.Server "open"
+    // from server.close()'s perspective indefinitely, so server.close()
+    // alone would never resolve while a client is connected -- the 10s
+    // watchdog above would then force-exit on every deploy, and no `disconnect`
+    // handler would run to clear this instance's Redis room/presence state.
+    //
+    // io.close() tears down every Socket.IO connection first (each fires its
+    // `disconnect` handler) and, per socket.io v4's Server.close(), also
+    // closes the http.Server it was attached to -- so a separate
+    // server.close() call is unnecessary and would just be a no-op against
+    // an already-closed server. closeIdleConnections() runs first so idle
+    // keep-alive REST connections don't independently block that same close.
     server.closeIdleConnections();
+    await new Promise<void>((resolve) => {
+      void io.close(() => resolve());
+    });
     await disconnectMongo();
     await disconnectRedis();
     logger.info("shutdown complete");
