@@ -1,0 +1,12 @@
+$kind: http-request
+description: Idempotent — run this twice and the second call still returns 200 with the same participantCount, not an error and not a double-count.
+url: "{{baseUrl}}/api/rooms/{{roomId}}/join"
+method: POST
+headers:
+  Authorization: Bearer {{guestToken}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("200 OK", () => pm.response.to.have.status(200));
+      pm.test("participantCount is now 2", () => pm.expect(pm.response.json().data.participantCount).to.eql(2));
+order: 6000

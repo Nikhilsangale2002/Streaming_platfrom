@@ -1,0 +1,14 @@
+$kind: http-request
+description: A non-host leaving does NOT end the room. Also idempotent — safe to call again.
+url: "{{baseUrl}}/api/rooms/{{roomId}}/leave"
+method: POST
+headers:
+  Authorization: Bearer {{guestToken}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("200 OK, room not ended", () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().data.roomEnded).to.eql(false);
+      });
+order: 8000

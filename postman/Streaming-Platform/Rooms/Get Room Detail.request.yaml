@@ -1,0 +1,14 @@
+$kind: http-request
+description: "Unlike the list endpoint, this returns the full `participants: [{id, name}]` array — a single Redis SMEMBERS + one batched Mongo `find` for names, not N individual lookups."
+url: "{{baseUrl}}/api/rooms/{{roomId}}"
+method: GET
+headers:
+  Authorization: Bearer {{hostToken}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("200 OK with participants array", () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().data.participants).to.be.an("array");
+      });
+order: 4000

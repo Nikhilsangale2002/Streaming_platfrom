@@ -1,0 +1,26 @@
+$kind: http-request
+description: "Rotates the host refresh token: revokes it and returns a new access token + a new refresh token. Run Register (Host) first so {{hostRefreshToken}} is set. Running this request twice in a row will correctly fail the second time with REFRESH_TOKEN_REUSED, since the first run already rotated the token away."
+url: "{{baseUrl}}/api/auth/refresh"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "refreshToken": "{{hostRefreshToken}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("200 or 401 (401 if already rotated by a previous run)", () => pm.expect(pm.response.code).to.be.oneOf([200, 401]));
+      if (pm.response.code === 200) {
+        const body = pm.response.json();
+        pm.test("returns a new access token and a new refresh token", () => {
+          pm.expect(body.data.accessToken).to.be.a("string");
+          pm.expect(body.data.refreshToken).to.be.a("string");
+        });
+        pm.collectionVariables.set("hostToken", body.data.accessToken);
+        pm.collectionVariables.set("hostRefreshToken", body.data.refreshToken);
+      }
+order: 5000

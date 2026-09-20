@@ -1,0 +1,18 @@
+$kind: http-request
+description: The guest is not `room.host`, so the derived grant is participant-level (audio publish + subscribe, no `roomAdmin`) regardless of any `role` sent in the body.
+url: "{{baseUrl}}/api/livekit/token"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{guestToken}}
+body:
+  type: text
+  content: |-
+    {
+      "userId": "{{guestUserId}}",
+      "roomName": "{{roomId}}"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("200 OK", () => pm.response.to.have.status(200));
+order: 2000

@@ -1,0 +1,21 @@
+$kind: http-request
+description: The creator is auto-joined as host in the same request (via the room state service's `join()`), so `participantCount` is already 1 in the response — no separate join call needed for the host.
+url: "{{baseUrl}}/api/rooms"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{hostToken}}
+body:
+  type: text
+  content: |-
+    {
+      "name": "Morning Show"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("201 Created", () => pm.response.to.have.status(201));
+      const body = pm.response.json();
+      pm.test("host auto-joined", () => pm.expect(body.data.participantCount).to.eql(1));
+      pm.collectionVariables.set("roomId", body.data.id);
+order: 1000

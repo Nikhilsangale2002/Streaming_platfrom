@@ -1,0 +1,18 @@
+$kind: http-request
+description: "Only `status: \"live\"` rooms, newest first. Returns `participantCount` per room via one pipelined Redis SCARD per room (not N sequential round trips) — deliberately does NOT return a full `participants` array here; that's reserved for the single-room detail endpoint."
+url: "{{baseUrl}}/api/rooms?page=1&limit=20"
+method: GET
+headers:
+  Authorization: Bearer {{hostToken}}
+queryParams:
+  page: "1"
+  limit: "20"
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("200 OK", () => pm.response.to.have.status(200));
+      pm.test("list items have no participants array", () => {
+        const rooms = pm.response.json().data.rooms;
+        if (rooms.length > 0) pm.expect(rooms[0]).to.not.have.property("participants");
+      });
+order: 3000

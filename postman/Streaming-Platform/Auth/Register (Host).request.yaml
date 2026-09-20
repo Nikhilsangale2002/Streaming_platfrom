@@ -1,0 +1,27 @@
+$kind: http-request
+description: Creates the user who will host the demo room. `profileImage` is optional (must be a URL if provided). Rate-limited (20 requests / 15 min, Redis-backed) alongside `/login`.
+url: "{{baseUrl}}/api/auth/register"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "name": "Host User",
+      "email": "host+{{$timestamp}}@example.com",
+      "password": "correct-horse-battery"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("201 Created", () => pm.response.to.have.status(201));
+      const body = pm.response.json();
+      pm.test("returns a token and no passwordHash", () => {
+        pm.expect(body.data.token).to.be.a("string");
+        pm.expect(body.data.user).to.not.have.property("passwordHash");
+      });
+      pm.collectionVariables.set("hostToken", body.data.token);
+      pm.collectionVariables.set("hostUserId", body.data.user.id);
+      pm.collectionVariables.set("hostRefreshToken", body.data.refreshToken);
+order: 1000

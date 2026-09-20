@@ -1,0 +1,14 @@
+$kind: http-request
+description: Run this AFTER "Leave Room (Host) - ends the room" above, against the same {{roomId}}. Joining an ended room is rejected; leaving one is not (leave stays idempotent so nobody gets stranded).
+url: "{{baseUrl}}/api/rooms/{{roomId}}/join"
+method: POST
+headers:
+  Authorization: Bearer {{guestToken}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("409 ROOM_ENDED", () => {
+        pm.response.to.have.status(409);
+        pm.expect(pm.response.json().code).to.eql("ROOM_ENDED");
+      });
+order: 10000

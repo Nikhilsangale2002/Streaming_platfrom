@@ -1,0 +1,16 @@
+$kind: http-request
+description: Revokes the guest refresh token. Idempotent — run it twice and both calls return 200. Run Register (Guest) first so {{guestRefreshToken}} is set.
+url: "{{baseUrl}}/api/auth/logout"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "refreshToken": "{{guestRefreshToken}}"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("200 OK", () => pm.response.to.have.status(200));
+order: 6000

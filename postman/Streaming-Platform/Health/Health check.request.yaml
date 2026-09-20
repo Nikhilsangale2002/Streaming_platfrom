@@ -1,0 +1,10 @@
+$kind: http-request
+description: Liveness probe used by Docker's HEALTHCHECK and any load balancer. Deliberately NOT wrapped in the `{success,message,data}` envelope — this is the one documented exception.
+url: "{{baseUrl}}/health"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("200 OK", () => pm.response.to.have.status(200));
+      pm.test("has status:ok", () => pm.expect(pm.response.json().status).to.eql("ok"));
+order: 1000

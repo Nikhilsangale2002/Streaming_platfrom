@@ -1,0 +1,61 @@
+$kind: http-request
+description: |-
+  LiveKit itself calls this — not a client — but this request builds and sends a genuinely-signed test payload so the endpoint can be demonstrated standalone.
+
+  **Requires `livekitApiKey`/`livekitApiSecret` collection variables** set to the same values as `backend/.env`'s `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` (Postman's pre-request script signs the body the same way LiveKit's real servers do: an HS256 JWT over the body's SHA-256 hash, issued by the API key).
+
+  Run this once, then run it again unchanged — the second delivery is dropped by the dedupe guard (same event id, claimed already) rather than reconciled twice. Change the `id` field in the pre-request script to get a fresh, non-deduped event.
+url: "{{baseUrl}}/api/livekit/webhook"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: "{{webhookSignature}}"
+body:
+  type: text
+  content: "{{webhookBody}}"
+scripts:
+  - type: beforeRequest
+    code: |-
+      const apiKey = pm.collectionVariables.get("livekitApiKey");
+      const apiSecret = pm.collectionVariables.get("livekitApiSecret");
+
+      if (!apiKey || !apiSecret) {
+        console.warn("Set collection variables livekitApiKey / livekitApiSecret (same as backend/.env) to sign this webhook.");
+      }
+
+      const roomId = pm.collectionVariables.get("roomId") || "000000000000000000000000";
+      const guestUserId = pm.collectionVariables.get("guestUserId") || "000000000000000000000001";
+
+      const body = JSON.stringify({
+        event: "participant_left",
+        id: "postman-evt-" + Date.now(),
+        createdAt: Math.floor(Date.now() / 1000),
+        room: { name: roomId },
+        participant: { identity: guestUserId }
+      });
+
+      function base64url(wordArray) {
+        return CryptoJS.enc.Base64.stringify(wordArray)
+          .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      }
+
+      const header = { alg: "HS256", typ: "JWT" };
+      const nowSec = Math.floor(Date.now() / 1000);
+      const payload = {
+        iss: apiKey,
+        sha256: CryptoJS.SHA256(body).toString(CryptoJS.enc.Base64),
+        iat: nowSec,
+        exp: nowSec + 300
+      };
+
+      const headerB64 = base64url(CryptoJS.enc.Utf8.parse(JSON.stringify(header)));
+      const payloadB64 = base64url(CryptoJS.enc.Utf8.parse(JSON.stringify(payload)));
+      const signingInput = headerB64 + "." + payloadB64;
+      const signature = base64url(CryptoJS.HmacSHA256(signingInput, apiSecret || "placeholder"));
+      const jwt = signingInput + "." + signature;
+
+      pm.collectionVariables.set("webhookBody", body);
+      pm.collectionVariables.set("webhookSignature", jwt);
+  - type: afterResponse
+    code: pm.test("200 OK (processed or already-processed)", () => pm.response.to.have.status(200));
+order: 5000

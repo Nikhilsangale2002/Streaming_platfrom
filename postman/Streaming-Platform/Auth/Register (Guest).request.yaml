@@ -1,0 +1,23 @@
+$kind: http-request
+description: Creates a second user, used throughout the collection as the non-host participant (joins the room, receives socket-scoped events, is the subject of the LiveKit webhook example).
+url: "{{baseUrl}}/api/auth/register"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "name": "Guest User",
+      "email": "guest+{{$timestamp}}@example.com",
+      "password": "correct-horse-battery"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("201 Created", () => pm.response.to.have.status(201));
+      const body = pm.response.json();
+      pm.collectionVariables.set("guestToken", body.data.token);
+      pm.collectionVariables.set("guestUserId", body.data.user.id);
+      pm.collectionVariables.set("guestRefreshToken", body.data.refreshToken);
+order: 2000

@@ -199,7 +199,7 @@ On failure:
 
 The one exception is `GET /health`, which returns a bare `{ "status": "ok", "uptime": 12.3 }` — that's what Docker's healthcheck and any load balancer expect, not a client-facing endpoint.
 
-A full **Postman collection** is included at `postman/Streaming-Platform.postman_collection.json` — import it, run "Register (Host)" and "Register (Guest)" first, and everything downstream (creating a room, joining, getting a LiveKit token) is pre-wired to use the tokens/IDs those return, so you can click through the whole flow without copy-pasting anything by hand.
+A full **Postman collection** is included at `postman/Streaming-Platform/` (Postman's newer v3 YAML collection format — one file per request, easy to diff and review) — import the folder, run "Register (Host)" and "Register (Guest)" first, and everything downstream (creating a room, joining, getting a LiveKit token) is pre-wired to use the tokens/IDs those return, so you can click through the whole flow without copy-pasting anything by hand.
 
 ### Auth
 
@@ -443,5 +443,5 @@ Approximately **9 hours**, spread across architecture/design, implementation, re
 ## Repository
 
 - **GitHub:** https://github.com/Nikhilsangale2002/Streaming_platfrom
-- **API Collection:** `postman/Streaming-Platform.postman_collection.json`
+- **API Collection:** `postman/Streaming-Platform/` (Postman v3 YAML format)
 - **Full design document:** `plan.md` (architecture decisions, data model, and the reasoning behind them, written before implementation started)

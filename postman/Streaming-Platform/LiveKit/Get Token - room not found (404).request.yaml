@@ -1,0 +1,17 @@
+$kind: http-request
+url: "{{baseUrl}}/api/livekit/token"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{hostToken}}
+body:
+  type: text
+  content: |-
+    {
+      "userId": "{{hostUserId}}",
+      "roomName": "507f1f77bcf86cd799439011"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("404 ROOM_NOT_FOUND", () => pm.response.to.have.status(404));
+order: 4000

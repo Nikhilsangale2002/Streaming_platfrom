@@ -1,0 +1,24 @@
+$kind: http-request
+description: "`userId` in the body must match the caller's own verified JWT identity — it's checked, never trusted (see the next request for what happens when it doesn't match). `role` in the body is accepted for shape-compatibility with the brief's documented example but is NEVER what determines the grant: the server derives host-vs-participant solely from `room.host`. The returned token is a real, usable LiveKit JWT — paste it into `serverUrl` + `token` in LiveKit's Meet sample or your own client to actually connect."
+url: "{{baseUrl}}/api/livekit/token"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{hostToken}}
+body:
+  type: text
+  content: |-
+    {
+      "userId": "{{hostUserId}}",
+      "roomName": "{{roomId}}",
+      "role": "host"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("200 OK with a token", () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().data.token).to.be.a("string");
+        pm.expect(pm.response.json().data.roomName).to.eql(pm.collectionVariables.get("roomId"));
+      });
+order: 1000

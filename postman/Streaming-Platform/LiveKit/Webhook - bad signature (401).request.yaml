@@ -1,0 +1,20 @@
+$kind: http-request
+description: No valid JWT signature — rejected before any reconciliation logic runs.
+url: "{{baseUrl}}/api/livekit/webhook"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: not-a-valid-signature
+body:
+  type: text
+  content: |-
+    {
+      "event": "participant_left",
+      "id": "evt-bad-sig",
+      "room": { "name": "{{roomId}}" },
+      "participant": { "identity": "{{guestUserId}}" }
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("401 Unauthorized", () => pm.response.to.have.status(401));
+order: 6000

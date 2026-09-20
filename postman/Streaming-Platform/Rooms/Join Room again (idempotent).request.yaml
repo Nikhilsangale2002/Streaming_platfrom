@@ -1,0 +1,15 @@
+$kind: http-request
+description: Same guest, same room, second call — proves join() is idempotent (SADD on an existing member returns 0, no double-count, no error).
+url: "{{baseUrl}}/api/rooms/{{roomId}}/join"
+method: POST
+headers:
+  Authorization: Bearer {{guestToken}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("200 OK, count unchanged", () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().data.participantCount).to.eql(2);
+        pm.expect(pm.response.json().data.joined).to.eql(false);
+      });
+order: 7000

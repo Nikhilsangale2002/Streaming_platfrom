@@ -1,0 +1,14 @@
+$kind: http-request
+description: A syntactically valid but non-existent ObjectId → `ROOM_NOT_FOUND`.
+url: "{{baseUrl}}/api/rooms/507f1f77bcf86cd799439011"
+method: GET
+headers:
+  Authorization: Bearer {{hostToken}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("404 ROOM_NOT_FOUND", () => {
+        pm.response.to.have.status(404);
+        pm.expect(pm.response.json().code).to.eql("ROOM_NOT_FOUND");
+      });
+order: 5000

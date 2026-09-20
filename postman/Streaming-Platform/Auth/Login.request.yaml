@@ -1,0 +1,17 @@
+$kind: http-request
+description: Edit the email to match a user you've already registered (the Register requests above use a timestamped email, so this example won't match them out of the box — that's expected).
+url: "{{baseUrl}}/api/auth/login"
+method: POST
+headers:
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "email": "host@example.com",
+      "password": "correct-horse-battery"
+    }
+scripts:
+  - type: afterResponse
+    code: pm.test("200 or 401", () => pm.expect(pm.response.code).to.be.oneOf([200, 401]));
+order: 3000

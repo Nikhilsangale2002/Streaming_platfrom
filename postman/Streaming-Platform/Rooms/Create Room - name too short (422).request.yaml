@@ -1,0 +1,21 @@
+$kind: http-request
+description: Room names must be 3-80 characters (Zod boundary validation). Demonstrates `VALIDATION_ERROR` with a field-level `errors` map.
+url: "{{baseUrl}}/api/rooms"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{hostToken}}
+body:
+  type: text
+  content: |-
+    {
+      "name": "ab"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("422 VALIDATION_ERROR", () => {
+        pm.response.to.have.status(422);
+        pm.expect(pm.response.json().code).to.eql("VALIDATION_ERROR");
+      });
+order: 2000

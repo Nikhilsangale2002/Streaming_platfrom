@@ -1,0 +1,22 @@
+$kind: http-request
+description: "The guest's own JWT is used for auth, but the body claims the HOST's userId. This is the identity-spoofing guard: rejected before any room lookup or LiveKit call happens, specifically so a caller can't probe room existence via someone else's identity."
+url: "{{baseUrl}}/api/livekit/token"
+method: POST
+headers:
+  Content-Type: application/json
+  Authorization: Bearer {{guestToken}}
+body:
+  type: text
+  content: |-
+    {
+      "userId": "{{hostUserId}}",
+      "roomName": "{{roomId}}"
+    }
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("403 IDENTITY_MISMATCH", () => {
+        pm.response.to.have.status(403);
+        pm.expect(pm.response.json().code).to.eql("IDENTITY_MISMATCH");
+      });
+order: 3000

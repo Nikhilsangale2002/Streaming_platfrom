@@ -1,0 +1,14 @@
+$kind: http-request
+description: Run this LAST in the Rooms folder — the host leaving transitions the room to `ended` (terminal state). Room membership for anyone still inside converges at this point too.
+url: "{{baseUrl}}/api/rooms/{{roomId}}/leave"
+method: POST
+headers:
+  Authorization: Bearer {{hostToken}}
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.test("200 OK, host leaving ends the room", () => {
+        pm.response.to.have.status(200);
+        pm.expect(pm.response.json().data.roomEnded).to.eql(true);
+      });
+order: 9000

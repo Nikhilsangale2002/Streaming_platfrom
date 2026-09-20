@@ -1,0 +1,24 @@
+$kind: collection
+id: 5c7a1e40-8f3b-4a2e-9d6c-3b1f6e2a9c10
+name: LVS Streaming Platform API
+description: |-
+  Real-time live streaming & group voice chat platform backend.
+
+  Covers auth, rooms, LiveKit token issuance, and LiveKit webhooks.
+
+  ## How to use
+  1. Import this collection and set `baseUrl` (defaults to `http://localhost:5000`, matching `docker compose up`).
+  2. Run **Auth > Register (Host)** and **Auth > Register (Guest)** first — their test scripts save `hostToken`/`hostUserId` and `guestToken`/`guestUserId` as collection variables automatically.
+  3. Run **Rooms > Create Room (Host)** — its test script saves `roomId`.
+  4. Everything downstream (join, leave, LiveKit token, webhook) reads those saved variables, so requests can be run in order without manual copy-pasting.
+
+  All responses share one envelope: `{ success, message, data }` on success, `{ success: false, code, message, errors? }` on failure — except `GET /health`, which is a plain `{ status, uptime }` for load balancers/Docker healthchecks, by design.
+variables:
+  baseUrl: http://localhost:5000
+  hostToken: ""
+  hostUserId: ""
+  guestToken: ""
+  guestUserId: ""
+  roomId: ""
+  hostRefreshToken: ""
+  guestRefreshToken: ""
