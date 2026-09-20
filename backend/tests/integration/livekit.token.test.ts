@@ -97,6 +97,27 @@ describe("POST /api/livekit/token", () => {
     expect(decoded.video?.roomAdmin).not.toBe(true);
   });
 
+  it("returns 409 ROOM_ENDED when the room has already ended", async () => {
+    const host = await registerAndLogin("lk-ended-host@example.com");
+    const createResponse = await request(app)
+      .post("/api/rooms")
+      .set("Authorization", `Bearer ${host.token}`)
+      .send({ name: "LK Room Ended" });
+    const roomId = createResponse.body.data.id as string;
+
+    // The host leaving ends the room (host.state.service: leave() ends the
+    // room when the leaving member is the host).
+    await request(app).post(`/api/rooms/${roomId}/leave`).set("Authorization", `Bearer ${host.token}`);
+
+    const response = await request(app)
+      .post("/api/livekit/token")
+      .set("Authorization", `Bearer ${host.token}`)
+      .send({ userId: host.userId, roomName: roomId });
+
+    expect(response.status).toBe(409);
+    expect(response.body.code).toBe("ROOM_ENDED");
+  });
+
   it("returns 404 for a room that does not exist", async () => {
     const user = await registerAndLogin("lk-404@example.com");
 
