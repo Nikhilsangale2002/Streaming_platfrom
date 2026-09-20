@@ -35,6 +35,11 @@ Thumbs.db
 # SDD workspace (git-ignored scratch)
 /.superpowers
 
+# Postman desktop app's own local-workspace scratch state — regenerated every
+# time the app opens the imported collection, not part of the collection itself.
+postman/.postman/
+postman/postman/
+
 # Removed from git history at the user's request (2026-09-19) — ignored so
 # they can't be accidentally re-tracked. Kept locally, not in the repo.
 # plan.md is deliberately NOT in this list — it's tracked and pushed.
