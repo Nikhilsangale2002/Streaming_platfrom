@@ -6,6 +6,7 @@ import {
   isOnline,
   getOnlineUserIds,
 } from "../../src/modules/presence/presence.service";
+import { redisKeys } from "../../src/config/constants";
 
 describe("presence.service", () => {
   withTestDatabases();
@@ -51,15 +52,14 @@ describe("presence.service", () => {
     expect(result.wentOffline).toBe(false);
   });
 
-  it("heartbeat refreshes the presence TTL without changing socket membership", async () => {
+  it("presence keys carry no TTL, so a long-lived socket cannot silently expire out of presence", async () => {
     await markSocketConnected("user-1", "socket-a");
-    const key = "presence:user:user-1";
 
-    await redis.expire(key, 1);
-    await new Promise((resolve) => setTimeout(resolve, 50));
-    await import("../../src/modules/presence/presence.service").then((m) => m.heartbeat("user-1"));
-    const ttl = await redis.ttl(key);
+    const presenceTtl = await redis.ttl(redisKeys.userPresence("user-1"));
+    const socketsTtl = await redis.ttl(redisKeys.userSockets("user-1"));
 
-    expect(ttl).toBeGreaterThan(1);
+    // -1 means "key exists with no expiry" (ioredis TTL semantics).
+    expect(presenceTtl).toBe(-1);
+    expect(socketsTtl).toBe(-1);
   });
 });

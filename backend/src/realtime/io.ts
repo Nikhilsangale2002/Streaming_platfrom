@@ -2,6 +2,7 @@ import type { Server as HttpServer } from "node:http";
 import { Server } from "socket.io";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { createRedisPubSubPair } from "../db/redis";
+import { env } from "../config/env";
 import { logger } from "../utils/logger";
 import { socketAuthMiddleware } from "./socket.auth";
 import { registerRoomHandlers } from "./handlers/room.handlers";
@@ -12,7 +13,7 @@ export function attachSocketServer(
   httpServer: HttpServer,
 ): Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData> {
   const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {
-    cors: { origin: true, credentials: true },
+    cors: { origin: [...env.corsOrigins], credentials: true },
   });
 
   const { pub, sub } = createRedisPubSubPair();

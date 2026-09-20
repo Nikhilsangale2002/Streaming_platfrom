@@ -1,5 +1,5 @@
 import type { Server, Socket } from "socket.io";
-import { markSocketConnected, markSocketDisconnected, heartbeat } from "../../modules/presence/presence.service";
+import { markSocketConnected, markSocketDisconnected } from "../../modules/presence/presence.service";
 import { socketRooms } from "../../config/constants";
 import { logger } from "../../utils/logger";
 import type { ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData } from "../events";
@@ -18,10 +18,6 @@ export function registerPresenceHandlers(io: AppServer, socket: AppSocket): void
       logger.error({ err: error, userId: socket.data.userId, socketId: socket.id }, "failed to mark socket connected");
     }
   })();
-
-  socket.on("presence:ping", () => {
-    void heartbeat(socket.data.userId);
-  });
 
   socket.on("disconnect", () => {
     void (async () => {

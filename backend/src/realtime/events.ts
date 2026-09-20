@@ -10,7 +10,6 @@ export interface ClientToServerEvents {
   ) => void;
   "room:leave": (payload: { roomId: string }) => void;
   "room:message": (payload: { roomId: string; text: string }) => void;
-  "presence:ping": () => void;
 }
 
 export interface ServerToClientEvents {

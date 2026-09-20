@@ -1,5 +1,5 @@
 import { redis } from "../../db/redis";
-import { redisKeys, PRESENCE_TTL_SECONDS } from "../../config/constants";
+import { redisKeys } from "../../config/constants";
 
 export async function markSocketConnected(
   userId: string,
@@ -7,11 +7,15 @@ export async function markSocketConnected(
 ): Promise<{ wentOnline: boolean }> {
   const socketsKey = redisKeys.userSockets(userId);
 
+  // No TTL on these keys: correctness relies solely on the explicit SADD/SREM
+  // transitions below, not on a redundant expiry racing a live socket. A
+  // socket that outlives a TTL would silently vanish from presence while
+  // still connected -- Socket.IO's own ping/pong keepalive is what detects a
+  // truly dead connection and fires `disconnect`.
   const pipeline = redis.pipeline();
   pipeline.sadd(socketsKey, socketId);
   pipeline.scard(socketsKey);
-  pipeline.expire(socketsKey, PRESENCE_TTL_SECONDS);
-  pipeline.set(redisKeys.userPresence(userId), "1", "EX", PRESENCE_TTL_SECONDS);
+  pipeline.set(redisKeys.userPresence(userId), "1");
   pipeline.sadd(redisKeys.onlineUsers(), userId);
   const results = await pipeline.exec();
 
@@ -36,11 +40,6 @@ export async function markSocketDisconnected(
   await redis.del(redisKeys.userPresence(userId));
   await redis.srem(redisKeys.onlineUsers(), userId);
   return { wentOffline: true };
-}
-
-export async function heartbeat(userId: string): Promise<void> {
-  await redis.expire(redisKeys.userPresence(userId), PRESENCE_TTL_SECONDS);
-  await redis.expire(redisKeys.userSockets(userId), PRESENCE_TTL_SECONDS);
 }
 
 export async function isOnline(userId: string): Promise<boolean> {
