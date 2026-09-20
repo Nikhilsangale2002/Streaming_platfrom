@@ -37,8 +37,8 @@ Thumbs.db
 
 # Removed from git history at the user's request (2026-09-19) — ignored so
 # they can't be accidentally re-tracked. Kept locally, not in the repo.
+# plan.md is deliberately NOT in this list — it's tracked and pushed.
 /CLAUDE.md
-/plan.md
 /docker-compose.dev.yml
 /backend/.env.example
 /docs
