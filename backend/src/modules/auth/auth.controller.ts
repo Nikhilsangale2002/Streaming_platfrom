@@ -4,8 +4,15 @@ import { AppError } from "../../utils/AppError";
 import { ok } from "../../utils/ApiResponse";
 import { asyncHandler } from "../../utils/asyncHandler";
 import { parsedBody } from "../../middleware/validate.middleware";
-import { hashPassword, comparePassword, signAccessToken } from "./auth.service";
-import type { RegisterInput, LoginInput } from "./auth.schema";
+import {
+  hashPassword,
+  comparePassword,
+  signAccessToken,
+  issueRefreshToken,
+  rotateRefreshToken,
+  revokeRefreshToken,
+} from "./auth.service";
+import type { RegisterInput, LoginInput, RefreshInput, LogoutInput } from "./auth.schema";
 
 function toUserDto(user: { _id: unknown; name: string; email: string; profileImage?: string }) {
   return {
@@ -28,7 +35,8 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   });
 
   const token = signAccessToken(user._id.toString());
-  res.status(201).json(ok({ user: toUserDto(user), token }, "Registered"));
+  const refreshToken = await issueRefreshToken(user._id.toString());
+  res.status(201).json(ok({ user: toUserDto(user), token, refreshToken }, "Registered"));
 });
 
 export const login = asyncHandler(async (req: Request, res: Response) => {
@@ -40,7 +48,20 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   }
 
   const token = signAccessToken(user._id.toString());
-  res.status(200).json(ok({ user: toUserDto(user), token }, "Logged in"));
+  const refreshToken = await issueRefreshToken(user._id.toString());
+  res.status(200).json(ok({ user: toUserDto(user), token, refreshToken }, "Logged in"));
+});
+
+export const refresh = asyncHandler(async (req: Request, res: Response) => {
+  const input = parsedBody<RefreshInput>(req);
+  const tokens = await rotateRefreshToken(input.refreshToken);
+  res.status(200).json(ok(tokens, "Token refreshed"));
+});
+
+export const logout = asyncHandler(async (req: Request, res: Response) => {
+  const input = parsedBody<LogoutInput>(req);
+  await revokeRefreshToken(input.refreshToken);
+  res.status(200).json(ok(null, "Logged out"));
 });
 
 export const me = asyncHandler(async (req: Request, res: Response) => {
